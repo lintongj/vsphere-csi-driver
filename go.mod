@@ -33,7 +33,7 @@ require (
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/thecodeteam/gofsutil v0.1.2 // indirect
 	github.com/vmware-tanzu/vm-operator-api v0.1.3
-	github.com/vmware/govmomi v0.23.2-0.20201031083551-1cfa19267614
+	github.com/vmware/govmomi v0.20.3
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
@@ -64,6 +64,7 @@ require (
 replace (
 	github.com/go-logr/logr => github.com/go-logr/logr v0.1.0
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.0
+	github.com/vmware/govmomi => ../../github.com/vmware/govmomi
 	k8s.io/api => k8s.io/api v0.18.5
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.5
 	k8s.io/apimachinery => k8s.io/apimachinery v0.18.5
