@@ -19,6 +19,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	cnstypes "github.com/vmware/govmomi/cns/types"
@@ -568,4 +569,34 @@ func isExpansionRequired(ctx context.Context, volumeID string, requestedSize int
 	}
 
 	return currentSize < requestedSize, nil
+}
+
+// CreateSnapshotUtil is the helper function to create CNS snapshot for given volumeId
+func CreateSnapshotUtil(ctx context.Context, manager *Manager, volumeID string, desc string) (string, *time.Time, error) {
+	log := logger.GetLogger(ctx)
+
+	log.Debugf("vSphere CSI driver is creating snapshot with description, %q, on volume: %q", desc, volumeID)
+	snapshotID, _, _, snapshotCreateTime, err := manager.VolumeManager.CreateSnapshot(ctx, volumeID, desc)
+	if err != nil {
+		log.Errorf("failed to create snapshot on volume %q with description %q with error %+v", volumeID, desc, err)
+		return "", nil, err
+	}
+	log.Debugf("Successfully created snapshot %q with description, %q, on volume: %q at timestamp %q", snapshotID, desc, volumeID, *snapshotCreateTime)
+
+	return volumeID + ":" + snapshotID, snapshotCreateTime, nil
+}
+
+// DeleteSnapshotUtil is the helper function to delete CNS snapshot for given snapshotId
+func DeleteSnapshotUtil(ctx context.Context, manager *Manager, volumeID string, snapshotID string) error {
+	log := logger.GetLogger(ctx)
+
+	log.Debugf("vSphere CSI driver is deleting snapshot %q on volume: %q", snapshotID, volumeID)
+	err := manager.VolumeManager.DeleteSnapshot(ctx, volumeID, snapshotID)
+	if err != nil {
+		log.Errorf("failed to delete snapshot %q on volume %q with error %+v", snapshotID, volumeID, err)
+		return err
+	}
+	log.Debugf("Successfully deleted snapshot %q on volume %q", snapshotID, volumeID)
+
+	return nil
 }
