@@ -286,6 +286,12 @@ func (c *controller) createBlockVolume(ctx context.Context, req *csi.CreateVolum
 	log := logger.GetLogger(ctx)
 	// Volume Size - Default is 10 GiB
 	volSizeBytes := int64(common.DefaultGbDiskSize * common.GbInBytes)
+
+	// Get Snapshot Size as the default Volume Size if Snapshot Source is set
+	if req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil {
+		volSizeBytes = int64(req.GetVolumeContentSource().GetSnapshot().XXX_Size())
+	}
+
 	if req.GetCapacityRange() != nil && req.GetCapacityRange().RequiredBytes != 0 {
 		volSizeBytes = int64(req.GetCapacityRange().GetRequiredBytes())
 	}
@@ -343,11 +349,25 @@ func (c *controller) createBlockVolume(ctx context.Context, req *csi.CreateVolum
 			}
 		}
 	}
+
 	var createVolumeSpec = common.CreateVolumeSpec{
 		CapacityMB: volSizeMB,
 		Name:       req.Name,
 		ScParams:   scParams,
 		VolumeType: common.BlockVolumeType,
+	}
+
+	// Handles the request for creating volume from snapshot in CSI Snapshot
+	volumeID, snapshotID, err := common.ParseVolumeDataSource(ctx, req.VolumeContentSource)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	if volumeID != "" {
+		createVolumeSpec.VolumeID = volumeID
+		if snapshotID == "" {
+			return nil, status.Error(codes.Unimplemented, "Volume Cloning is not implemented")
+		}
+		createVolumeSpec.SnapshotID = snapshotID
 	}
 
 	var sharedDatastores []*cnsvsphere.DatastoreInfo

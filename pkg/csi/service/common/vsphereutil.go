@@ -166,6 +166,20 @@ func CreateBlockVolumeUtil(ctx context.Context, clusterFlavor cnstypes.CnsCluste
 		}
 		createSpec.Profile = append(createSpec.Profile, profileSpec)
 	}
+	if spec.VolumeID != "" {
+		// Handles the request for creating volume from snapshot in CSI Snapshot
+		if spec.SnapshotID != "" {
+			createSpec.VolumeSource = &cnstypes.CnsSnapshotVolumeSource{
+				VolumeId: cnstypes.CnsVolumeId{
+					Id: spec.VolumeID,
+				},
+				SnapshotId: cnstypes.CnsSnapshotId{
+					Id: spec.SnapshotID,
+				},
+			}
+		}
+		// TODO: Handles the request for CSI Volume Cloning
+	}
 
 	log.Debugf("vSphere CSI driver creating volume %s with create spec %+v", spec.Name, spew.Sdump(createSpec))
 	volumeInfo, err := manager.VolumeManager.CreateVolume(ctx, createSpec)

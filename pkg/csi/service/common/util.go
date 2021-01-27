@@ -18,6 +18,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"strconv"
 	"strings"
@@ -322,4 +323,25 @@ func GetK8sCloudOperatorServicePort(ctx context.Context) int {
 		}
 	}
 	return k8sCloudOperatorServicePort
+}
+
+// ParseVolumeDataSource parses the VolumeContentSource in the request as the data source
+func ParseVolumeDataSource(ctx context.Context, source *csi.VolumeContentSource) (string, string, error) {
+	var volumeID string
+	var snapshotID string
+	if source != nil && source.GetSnapshot() != nil {
+		IDs := strings.Split(source.GetSnapshot().SnapshotId, ":")
+		if len(IDs) != 2 {
+			return "", "", errors.New("Invalid Snapshot ID from snapshot source")
+		}
+
+		volumeID = IDs[0]
+		snapshotID = IDs[1]
+	}
+
+	if source != nil && source.GetVolume() != nil {
+		volumeID = source.GetVolume().VolumeId
+	}
+
+	return volumeID, snapshotID, nil
 }

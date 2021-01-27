@@ -73,6 +73,8 @@ type CreateVolumeSpec struct {
 	AffineToHost           string
 	VolumeType             string
 	VsanDirectDatastoreURL string // Datastore URL from vSan direct storage pool
+	VolumeID   string // VolumeID for CNS Volume
+	SnapshotID string // SnapshotID for CNS Volume
 }
 
 // StorageClassParams represents the storage class parameterss
