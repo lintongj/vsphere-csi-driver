@@ -1,0 +1,30 @@
+- op: add
+  path: "/rules/-"
+  value:
+    apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotclasses"]
+    verbs: ["get", "list", "watch"]
+- op: add
+  path: "/rules/-"
+  value:
+    apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["create", "get", "list", "watch", "update", "delete"]
+- op: add
+  path: "/rules/-"
+  value:
+    apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents/status"]
+    verbs: ["update"]
+- op: add
+  path: "/rules/-"
+  value:
+    apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+- op: add
+  path: "/rules/-"
+  value:
+    apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]

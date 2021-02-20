@@ -1,0 +1,3 @@
+resources:
+  - rbac-snapshot-controller.yaml
+  - setup-snapshot-controller.yaml

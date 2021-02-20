@@ -403,7 +403,18 @@ print-ci-image:
 ################################################################################
 .PHONY: build-snap-images
 build-snap-images: build
-	$(MAKE) -C hack/images/snapshotter build
+	$(MAKE) -C hack/csi-snapshot-poc/images/snapshotter build
 
 print-snap-images:
-	@$(MAKE) --no-print-directory -C hack/images/snapshotter print
+	@$(MAKE) --no-print-directory -C hack/csi-snapshot-poc/images/snapshotter print
+
+DRIVER ?=
+SYNCER ?=
+
+.PHONY: deploy-snapshotter
+deploy-snapshotter:
+	$(MAKE) -C hack/csi-snapshot-poc deploy DRIVER=$(DRIVER) SYNCER=$(SYNCER)
+
+.PHONY: undeploy-snapshotter
+undeploy-snapshotter:
+	$(MAKE) -C hack/csi-snapshot-poc undeploy

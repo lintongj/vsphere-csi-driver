@@ -1,0 +1,4 @@
+resources:
+  - snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+  - snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+  - snapshot.storage.k8s.io_volumesnapshots.yaml
