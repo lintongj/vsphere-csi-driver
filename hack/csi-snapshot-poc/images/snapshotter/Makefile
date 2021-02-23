@@ -31,7 +31,7 @@ build-image:
 	docker build \
 		-t $(IMAGE):$(VERSION) \
 		-f $(DOCKERFILE) \
-		../../..
+		../../../..
 	docker tag $(IMAGE):$(VERSION) $(IMAGE):latest
 
 .PHONY: build
