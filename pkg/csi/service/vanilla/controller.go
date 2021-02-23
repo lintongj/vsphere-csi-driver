@@ -495,6 +495,17 @@ func (c *controller) createBlockVolume(ctx context.Context, req *csi.CreateVolum
 		}
 		resp.Volume.AccessibleTopology = append(resp.Volume.AccessibleTopology, volumeTopology)
 	}
+
+	// Set volume content source for CSI snapshot feature
+	if snapshotID != "" {
+		resp.Volume.ContentSource = &csi.VolumeContentSource{
+			Type: &csi.VolumeContentSource_Snapshot{
+				Snapshot: &csi.VolumeContentSource_SnapshotSource{
+					SnapshotId: volumeID + ":" + snapshotID,
+				},
+			},
+		}
+	}
 	return resp, nil
 }
 
