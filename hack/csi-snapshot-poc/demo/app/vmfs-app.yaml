@@ -1,0 +1,46 @@
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: example-vanilla-block-sc
+provisioner: csi.vsphere.vmware.com
+allowVolumeExpansion: true
+parameters:
+  datastoreurl: "ds:///vmfs/volumes/60a459e3-97dcfd06-df7f-02010acff168/"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vmfs-app
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-pod
+  namespace: vmfs-app
+spec:
+  containers:
+    - name: test-container
+      image: gcr.io/google_containers/busybox:1.24
+      command: ["/bin/sh", "-c", "echo 'hello' > /mnt/volume1/index.html  && chmod o+rX /mnt /mnt/volume1/index.html && while true ; do sleep 2 ; done"]
+      volumeMounts:
+        - name: test-volume
+          mountPath: /mnt/volume1
+  restartPolicy: Never
+  volumes:
+    - name: test-volume
+      persistentVolumeClaim:
+        claimName: example-vanilla-block-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-vanilla-block-pvc
+  namespace: vmfs-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: example-vanilla-block-sc
