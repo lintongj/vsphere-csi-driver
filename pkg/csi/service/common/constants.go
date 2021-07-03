@@ -235,6 +235,9 @@ const (
 	// TriggerCsiFullSyncCRName is the instance name of TriggerCsiFullSync
 	// All other names will be rejected by TriggerCsiFullSync controller.
 	TriggerCsiFullSyncCRName = "csifullsync"
+
+	// VSphereCSISnapshotIdDelimiter is the delimiter for concatenating CNS VolumeID and CNS SnapshotID
+	VSphereCSISnapshotIdDelimiter = "+"
 )
 
 // Supported container orchestrators.

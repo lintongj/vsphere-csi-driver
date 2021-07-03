@@ -19,6 +19,7 @@ package vanilla
 import (
 	"context"
 	"fmt"
+	"github.com/golang/protobuf/ptypes"
 	"math/rand"
 	"net/http"
 	"path/filepath"
@@ -1121,7 +1122,73 @@ func (c *controller) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshot
 	ctx = logger.NewContextWithLogger(ctx)
 	log := logger.GetLogger(ctx)
 	log.Infof("CreateSnapshot: called with args %+v", *req)
-	return nil, logger.LogNewErrorCode(log, codes.Unimplemented, "createSnapshot")
+
+	isBlockVolumeSnapshotEnabled := commonco.ContainerOrchestratorUtility.IsFSSEnabled(ctx, common.BlockVolumeSnapshot)
+	if !isBlockVolumeSnapshotEnabled {
+		return nil, logger.LogNewErrorCode(log, codes.Unimplemented, "createSnapshot")
+	}
+
+	// Validate arguments
+	volumeID := req.GetSourceVolumeId()
+	if len(volumeID) == 0 {
+		return nil, logger.LogNewErrorCode(log, codes.InvalidArgument, "CreateSnapshot Source Volume ID must be provided")
+	}
+
+	if len(req.Name) == 0 {
+		return nil, logger.LogNewErrorCode(log, codes.InvalidArgument, "Snapshot name must be provided")
+	}
+
+	// Check if volume already exists
+	volumeIds := []cnstypes.CnsVolumeId{{Id: volumeID}}
+	queryFilter := cnstypes.CnsQueryFilter{
+		VolumeIds: volumeIds,
+	}
+	queryResult, err := c.manager.VolumeManager.QueryVolume(ctx, queryFilter)
+	if err != nil {
+		msg := fmt.Sprintf("The volume %q to be snapshotted is not available: %v", volumeID, err)
+		log.Error(msg)
+		return nil, logger.LogNewErrorCode(log, codes.Internal, msg)
+	}
+
+	// Get the snapshot size by getting the volume size, which is only valid for full backup use cases
+	var snapshotSize int64
+	if len(queryResult.Volumes) > 0 {
+		snapshotSize = queryResult.Volumes[0].BackingObjectDetails.(cnstypes.BaseCnsBackingObjectDetails).GetCnsBackingObjectDetails().CapacityInMb
+	} else {
+		msg := fmt.Sprintf("failed to get the snapshot size by querying volume: %q", volumeID)
+		log.Error(msg)
+		return nil, logger.LogNewErrorCode(log, codes.Internal, msg)
+	}
+
+	snapshotID, snapshotCreateTime, err := common.CreateSnapshotUtil(ctx, c.manager, volumeID, req.Name)
+	if err != nil {
+		msg := fmt.Sprintf("failed to create snapshot on volume %q: %v", volumeID, err)
+		log.Error(msg)
+		return nil, logger.LogNewErrorCode(log, codes.Internal, msg)
+	}
+
+	snapshotCreateTimeInProto, err := ptypes.TimestampProto(*snapshotCreateTime)
+	if err != nil {
+		msg := fmt.Sprintf("failed to convert creation timestamp to proto format: %v", err)
+		log.Error(msg)
+		return nil, logger.LogNewErrorCode(log, codes.Internal, msg)
+	}
+
+	createSnapshotResponse := &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SizeBytes:      snapshotSize * common.MbInBytes,
+			SnapshotId:     snapshotID,
+			SourceVolumeId: volumeID,
+			CreationTime:   snapshotCreateTimeInProto,
+			ReadyToUse:     true,
+		},
+	}
+
+	log.Infof("CreateSnapshot succeeded for snapshot %s " +
+		"on volume %s size %d Time proto %d Timestamp %+v Response: %+v",
+		snapshotID, volumeID, snapshotSize * common.MbInBytes, snapshotCreateTimeInProto,
+		*snapshotCreateTime, createSnapshotResponse)
+	return createSnapshotResponse, nil
 }
 
 func (c *controller) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (
@@ -1129,7 +1196,37 @@ func (c *controller) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshot
 	ctx = logger.NewContextWithLogger(ctx)
 	log := logger.GetLogger(ctx)
 	log.Infof("DeleteSnapshot: called with args %+v", *req)
-	return nil, logger.LogNewErrorCode(log, codes.Unimplemented, "deleteSnapshot")
+
+	isBlockVolumeSnapshotEnabled := commonco.ContainerOrchestratorUtility.IsFSSEnabled(ctx, common.BlockVolumeSnapshot)
+	if !isBlockVolumeSnapshotEnabled {
+		return nil, logger.LogNewErrorCode(log, codes.Unimplemented, "deleteSnapshot")
+	}
+
+	// Validate arguments
+	csiSnapshotID := req.GetSnapshotId()
+	if len(csiSnapshotID) == 0 {
+		return nil, logger.LogNewErrorCode(log, codes.InvalidArgument, "DeleteSnapshot Snapshot ID must be provided")
+	}
+
+	// Decompose csiSnapshotID based on the format, <volumeID>+<snapshotID>
+	IDs := strings.Split(csiSnapshotID, common.VSphereCSISnapshotIdDelimiter)
+	if len(IDs) == 0 || len(IDs) != 2 {
+		return nil, logger.LogNewErrorCode(log, codes.InvalidArgument, "DeleteSnapshot provided invalid Snapshot ID")
+	}
+
+	volumeID := IDs[0]
+	snapshotID := IDs[1]
+	log.Debugf("DeleteSnapshot: Deleting snapshot %q on volume %q", snapshotID, volumeID)
+
+	err := common.DeleteSnapshotUtil(ctx, c.manager, volumeID, snapshotID)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to delete snapshot %q on volume %q. Error: %+v", snapshotID, volumeID, err)
+		log.Error(msg)
+		return nil, logger.LogNewErrorCode(log, codes.Internal, msg)
+	}
+
+	log.Infof("DeleteSnapshot: successfully deleted snapshot %q on volume %q", snapshotID, volumeID)
+	return &csi.DeleteSnapshotResponse{}, nil
 }
 
 func (c *controller) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (
